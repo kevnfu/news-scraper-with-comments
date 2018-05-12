@@ -1,0 +1,29 @@
+{
+  "name": "news-scraper-with-comments",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevnfu/news-scraper-with-comments.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kevnfu/news-scraper-with-comments/issues"
+  },
+  "homepage": "https://github.com/kevnfu/news-scraper-with-comments#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "express": "^4.16.3",
+    "express-handlebars": "^3.0.0",
+    "mongoose": "^5.1.0",
+    "morgan": "^1.9.0",
+    "npm": "^6.0.1",
+    "request": "^2.85.0"
+  }
+}
