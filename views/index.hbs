@@ -1,46 +1,152 @@
 <div class="container">
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <a class="navbar-brand" href="#">Navbar</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+  {{!-- navbar --}}
+  <nav class="navbar navbar-expand-md navbar-light bg-light">
+    <a class="navbar-brand" href="#">NYT News</a>
+    <button class="navbar-toggler" type="button"
+      data-toggle="collapse" data-target="#navbarSupportedContent">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav mr-auto">
-        <li class="nav-item active">
-          <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+        <li class="nav-item {{#if home}}active{{/if}}">
+          <a class="nav-link" href="/">Home</a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="#">Link</a>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-            Dropdown
-          </a>
-          <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-            <a class="dropdown-item" href="#">Action</a>
-            <a class="dropdown-item" href="#">Another action</a>
-            <div class="dropdown-divider"></div>
-            <a class="dropdown-item" href="#">Something else here</a>
-          </div>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link disabled" href="#">Disabled</a>
+        <li class="nav-item {{#unless home}}active{{/unless}}">
+          <a class="nav-link" href="#">Saved</a>
         </li>
       </ul>
-      <form class="form-inline my-2 my-lg-0">
-        <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
-        <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
-      </form>
+      <button class="btn btn-outline-success" id="scrape-btn">Scrape New Articles</button>
     </div>
   </nav>
 
+  {{!-- Alerts --}}
+  <div id="alerts"></div>
+
+  {{!-- Article cards --}}
+  {{#each articles}}
+  <div class="card my-3">
+    <h4 class="card-header">
+      <a href="{{url}}">{{title}}</a>
+      <button class="btn btn-outline-dark float-md-right add-comment-btn"
+        data-id="{{_id}}"
+        data-toggle="modal" data-target="#modal">
+        Comments: {{comments.length}}
+      </button>
+    </h4>
+    <div class="card-body">
+      <h5 class="card-title text-muted">{{byline}}</h5>
+      <p class="card-text">{{summary}}</p>
+    </div>
+  </div>
+  {{/each}}
+
 </div>
 
-{{#each articles}}
+<div class="modal fade" id="modal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Comments</h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="container">
+        <form id="modal-form">
+          <div class="modal-body">
+            <ul class="list-group" id="comments"></ul>
+            <hr>
+            <label>Add comment:</label>
+            <textarea id="modal-textarea" class="form-control"></textarea>
+            <br>
+          </div>
 
-<a href="{{url}}">{{title}}</a>
-<p>{{byline}}</p>
-<p>{{summary}}</p>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Add comment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
-{{/each}}
+{{#section 'script'}}
+
+<script type="text/javascript">
+
+  function createAlert(msg) {
+    let alert = $(
+    `<div class="alert alert-secondary alert-dismissible fade show" role="alert">
+      ${msg}
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>`);
+
+    $('#alerts').append(alert);
+
+    setTimeout(() => alert.alert('close'), 5000);
+  }
+
+  $('#scrape-btn').click((event) => {
+    event.preventDefault();
+    $.ajax({
+      method: 'GET',
+      url: '/scrape',
+      contentType: 'application/json'
+    }).then(response => {
+      createAlert(`Added ${response.added} articles. Refresh to see new.`);
+    });
+  });
+
+  function loadComments(id) {
+    $.ajax({
+      method: 'GET',
+      url: '/article/' + id,
+      contentType: 'application/json'
+    }).then(article => {
+      let commentSection = $('#comments');
+      commentSection.empty();
+      article.comments.forEach(comment => {
+        commentSection.append($(`
+          <li class="list-group-item">${comment.content}</li>
+        `));
+      });
+    });
+  }
+
+  // populate modal display
+  $('#modal').on('shown.bs.modal', (event) => {
+
+    $('#modal-textarea').trigger('focus');
+    // set article id as data on the form
+    let id = $(event.relatedTarget).data('id');
+    $('#modal-form').data('id', id);
+
+    loadComments(id);
+  });
+
+  // add comment
+  $('#modal-form').submit((event) => {
+    event.preventDefault();
+    let id = $('#modal-form').data('id');
+    let input = $('#modal-textarea');
+
+    $.ajax({
+      method: 'POST',
+      url: `/article/${id}/comment`,
+      contentType: 'application/json',
+      data: JSON.stringify({content: input.val()})
+    }).then(res => {
+      input.val('');
+      loadComments(id);
+    }).catch(err => {
+      createAlert(err);
+      $('#modal').modal('hide');
+    });
+  });
+
+</script>
+{{/section}}

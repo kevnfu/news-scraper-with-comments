@@ -32,30 +32,56 @@ app.use(express.urlencoded({extended: true}));
 app.use(express.json());
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// app.use(require('./routes/api-routes.js'));
-
-app.get('/all', (req, res) => {
+app.get('/article', (req, res) => {
   db.Article.find().then(data => res.json(data));
 });
 
+app.get('/article/:id', (req, res) => {
+  db.Article.findById(req.params.id)
+    .populate('comments')
+    .then(article => {
+      res.json(article);
+    });
+});
+
+app.post('/article/:id/comment', (req, res) => {
+  Promise.all([
+    db.Comment.create({ content: req.body.content }),
+    db.Article.findById(req.params.id)
+  ]).then(([comment, article]) => {
+    article.addComment(comment._id);
+  }).then(() => res.status(200).send('added'));
+});
+
+app.get('/comment', (req, res) => {
+  db.Comment.find().then(data => res.json(data));
+});
+
+// scrapes the NYT homepage, addes article to database.
+// returns the number of new articles added.
+// {added: ###}
 app.get('/scrape', (req, res) => {
   scraper.scrapeNYT().then(articles => {
     // create new if new article
-    articles.forEach(a => db.Article.createIfNew(a));
-    res.status(200).end();
+    let promises = [];
+    articles.forEach(a => {
+      promises.push(db.Article.createIfNew(a));
+    });
+
+    return Promise.all(promises);
+  }).then(createdArray => {
+    let count = createdArray.reduce((a,b) => a+b);
+    res.json({added: count});
   });
 });
 
 
 app.get('/', (req, res) => {
-  db.Article.find().then(articles => {
-    res.render('index', {articles});
+  db.Article.find().sort('-dateAdded').then(articles => {
+    res.render('index', {articles, home:true});
   });
 })
 
-app.post('/comment', (req, res) => {
-
-});
 
 app.listen(PORT, () => {
   console.log('App listening on PORT ' + PORT);
